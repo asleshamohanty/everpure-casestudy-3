@@ -1,0 +1,9 @@
+rule,source,rows_affected,action,reason
+"orphan","brief #1","245","owner set to null, flagged","blank, 'nan' text and ORPHANED_REPORT all mean no owner"
+"negativeCredits","brief #2","24","excluded from cost totals, original kept","negative compute is not physically possible; may be a refund"
+"slow","brief #3","1490","kept, drives alerts","slow loads are the signal, not an error"
+"costOutlier","brief #4","103","flagged as cost without usage","AWS cost per view above p95 ($2.64) or zero views"
+"refreshFailed","Task 2 rule","564","kept, drives alerts","FAILED and TIMED_OUT both leave stale data"
+"statusUnknown","found","100","data-quality warning","neither success nor failure; our judgment call"
+"zeroViews","found","4","cost per view = null","avoid divide-by-zero (Infinity)"
+"peakAboveViews","found","93","flagged, low priority","inconsistent under obvious definitions; columns undefined"
