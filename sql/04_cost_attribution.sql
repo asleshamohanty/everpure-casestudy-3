@@ -92,3 +92,26 @@ SELECT s.report_id, s.snapshot,
 FROM REPORTING.REPORT_SNAPSHOT s
 CROSS JOIN REPORTING.COST_CONFIG cfg
 WHERE s.monthly_active_views = 0;
+
+-- Defect 4: AWS hosting cost vs active usage.
+-- AWS cost per view, per snapshot. Flag the top 5% (above the 95th percentile)
+-- and every snapshot with zero views as "cost without usage". Same rule as clean.js,
+-- so check #10 can prove the two implementations agree.
+CREATE OR REPLACE VIEW REPORTING.V_AWS_COST_VS_USAGE AS
+WITH per_view AS (
+    SELECT report_id, snapshot, monthly_active_views, concurrent_user_peak, aws_hosting_cost_usd,
+           aws_hosting_cost_usd / NULLIF(monthly_active_views, 0) AS aws_per_view_usd
+    FROM REPORTING.REPORT_SNAPSHOT
+),
+p95 AS (
+    SELECT PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY aws_per_view_usd) AS cutoff
+    FROM per_view
+    WHERE aws_per_view_usd IS NOT NULL
+)
+SELECT v.*,
+       ROUND(p95.cutoff, 4) AS p95_cutoff_usd,
+       CASE WHEN v.aws_per_view_usd IS NULL THEN 'ZERO_VIEWS'
+            WHEN v.aws_per_view_usd > p95.cutoff THEN 'ABOVE_P95'
+       END AS discrepancy
+FROM per_view v
+CROSS JOIN p95;

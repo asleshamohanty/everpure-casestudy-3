@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { readToken } from "./api";
-import { useAlerts } from "./useAlerts";
+import { useLive } from "./useLive";
 import Login from "./pages/Login.jsx";
 import Overview from "./pages/Overview.jsx";
 import Orphans from "./pages/Orphans.jsx";
@@ -18,12 +18,14 @@ const TABS = [
   { id: "quality", label: "Data quality", roles: ["admin"] },
 ];
 
+const STATUS_LABEL = { live: "Live", connecting: "Connecting…", reconnecting: "Reconnecting…", polling: "Auto-refresh", off: "Off" };
+
 export default function App() {
   const [token, setToken] = useState(null);
   const [tab, setTab] = useState("overview");
   const user = token ? readToken(token) : null;
-  const canAlert = user && user.role !== "viewer";
-  const { alerts, status } = useAlerts(token, canAlert);
+  const canConnect = Boolean(user && user.role !== "viewer");
+  const { alerts, status, tick, clock } = useLive(token, canConnect);
 
   if (!token) return <Login onLogin={setToken} />;
 
@@ -39,7 +41,9 @@ export default function App() {
           <p className="muted">Report health, ownership, cost and live alerts</p>
         </div>
         <div className="who">
-          {canAlert && <span className={`dot ${status}`} title={`Alerts: ${status}`} />}
+          <span className="live-pill" title="Connection status">
+            <span className={`dot ${status}`} /> {STATUS_LABEL[status]}
+          </span>
           <span>{user.username}</span>
           <span className="role">{user.role}</span>
           <button className="link" onClick={() => { setToken(null); setTab("overview"); }}>Log out</button>
@@ -56,10 +60,10 @@ export default function App() {
       </nav>
 
       <main>
-        {tab === "overview" && <Overview token={token} role={user.role} />}
+        {tab === "overview" && <Overview token={token} role={user.role} tick={tick} clock={clock} />}
         {tab === "alerts" && <Alerts alerts={alerts} status={status} />}
-        {tab === "orphans" && <Orphans token={token} />}
-        {tab === "costs" && <Costs token={token} />}
+        {tab === "orphans" && <Orphans token={token} tick={tick} />}
+        {tab === "costs" && <Costs token={token} tick={tick} />}
         {tab === "quality" && <DataQuality token={token} />}
       </main>
     </div>

@@ -23,6 +23,7 @@ Every error has the same shape:
 | 401 | `BAD_LOGIN` | Wrong username or password |
 | 401 | `UNAUTHENTICATED` | Missing, invalid or expired token |
 | 403 | `FORBIDDEN` | Valid token, but the role may not use this endpoint |
+| 400 | `INVALID_OWNER` | Owner is not an email address or null |
 | 404 | `NOT_FOUND` | Report does not exist, or an owner asks for a report they do not own (404, not 403, so its existence is not revealed) |
 
 ## Permissions
@@ -32,12 +33,14 @@ Every error has the same shape:
 | `GET /health/summary` | yes | yes | yes |
 | `GET /reports`, `GET /reports/:id` | all | own reports only | all, without owner and cost fields |
 | `GET /reports/orphans` | yes | 403 | 403 |
+| `PATCH /reports/:id/owner` | yes | 403 | 403 |
+| `GET /ownership/audit` | yes | 403 | 403 |
 | `GET /costs` | all | own reports only | 403 |
 | `GET /alerts` | all | own reports only | 403 |
 | `GET /data-quality` | yes | 403 | 403 |
-| WebSocket `/ws/alerts` | all alerts | own reports' alerts | closed with 4403 |
+| WebSocket `/ws/alerts` | all alerts + live events | own reports' alerts + live events | closed with 4403 (the dashboard polls every 3 s instead) |
 
-"Own reports" = reports whose owner in the **latest** snapshot is the user's email.
+"Own reports" = reports whose owner in the **ownership registry** is the user's email. The registry starts from the owner in the latest CSV snapshot and changes when an admin reassigns a report.
 
 ## REST endpoints
 
@@ -54,14 +57,18 @@ Response `200`:
 
 ### `GET /api/v1/health/summary`
 
-Counts for the latest snapshot.
+Counts for the **current** telemetry snapshot (it advances every few seconds). `orphaned` comes from the ownership registry.
 ```json
-{ "snapshot": 20, "totalReports": 100, "refreshFailed": 25, "slowOver15s": 76, "orphaned": 14, "statusUnknown": 5 }
+{
+  "snapshot": 3, "totalSnapshots": 20, "updatedAt": "2026-10-13T16:14:02.400Z",
+  "totalReports": 100, "refreshFailed": 22, "slowOver15s": 75, "criticalOver30s": 46,
+  "orphaned": 14, "statusUnknown": 9
+}
 ```
 
 ### `GET /api/v1/reports?status=FAILED`
 
-Reports in the latest snapshot. Optional `status`: `SUCCESS`, `FAILED`, `TIMED_OUT`, `UNKNOWN`.
+Reports in the current snapshot. Optional `status`: `SUCCESS`, `FAILED`, `TIMED_OUT`, `UNKNOWN`. The response also carries `"snapshot"`.
 ```json
 {
   "count": 16,
@@ -72,12 +79,12 @@ Reports in the latest snapshot. Optional `status`: `SUCCESS`, `FAILED`, `TIMED_O
       "credits": 1029.31, "awsUsd": 27.34, "loadSec": 49.1, "peakUsers": 29, "queries": 22137,
       "flags": { "orphan": false, "negativeCredits": false, "slow": true, "refreshFailed": true,
                  "statusUnknown": false, "zeroViews": false, "peakAboveViews": false, "costOutlier": false },
-      "rawCredits": 1029.31, "awsPerView": 0.027
+      "rawCredits": 1029.31, "awsPerView": 0.027, "observedOwner": "user_9@company.com"
     }
   ]
 }
 ```
-Viewers receive the same objects without `owner`, `credits`, `rawCredits`, `awsUsd` and `awsPerView`. `credits` is `null` when the source value was negative (quarantined); `rawCredits` keeps the original.
+`owner` comes from the ownership registry; `observedOwner` is the raw value in that snapshot of the data. Viewers receive the same objects without `owner`, `observedOwner`, `credits`, `rawCredits`, `awsUsd` and `awsPerView`. `credits` is `null` when the source value was negative (quarantined); `rawCredits` keeps the original.
 
 ### `GET /api/v1/reports/:id`
 
@@ -85,7 +92,23 @@ All 20 snapshots of one report: `{ "reportId": "RPT_203", "history": [ <report o
 
 ### `GET /api/v1/reports/orphans` (admin)
 
-`{ "count": 14, "reports": [ <report object>, ... ] }`. Rule: owner missing (blank, the text `nan`, or `ORPHANED_REPORT`) in the latest snapshot.
+`{ "count": 14, "reports": [ <report object>, ... ] }`. A report is orphaned when the registry has no owner for it (initially: blank, the text `nan`, or `ORPHANED_REPORT` in the latest snapshot).
+
+### `PATCH /api/v1/reports/:id/owner` (admin)
+
+Assign an owner, or remove one with `null`. Every change is audited and pushed to connected dashboards as an `ownership` event.
+
+Request: `{ "owner": "user_9@company.com" }`
+
+Response `200`:
+```json
+{ "at": "2026-10-13T16:14:03.920Z", "by": "admin", "reportId": "RPT_201", "from": null, "to": "user_9@company.com" }
+```
+`400 INVALID_OWNER` if `owner` is not an email or null; `404` if the report does not exist.
+
+### `GET /api/v1/ownership/audit` (admin)
+
+The 50 most recent ownership changes, newest first: `{ "count": n, "changes": [ <change>, ... ] }`.
 
 ### `GET /api/v1/costs` (admin, owner)
 
@@ -120,6 +143,16 @@ On connect:
 { "type": "hello", "role": "admin" }
 ```
 
+Each time a telemetry snapshot arrives (every few seconds); the dashboard reloads its data:
+```json
+{ "type": "snapshot", "snapshot": 7, "total": 20, "at": "2026-10-13T16:14:07.400Z" }
+```
+
+When an admin reassigns a report:
+```json
+{ "type": "ownership", "reportId": "RPT_201", "owner": "user_9@company.com" }
+```
+
 Each alert:
 ```json
 {
@@ -129,25 +162,24 @@ Each alert:
   "severity": "critical",
   "reportId": "RPT_204",
   "reportName": "Analytics Dashboard 5",
-  "owner": "user_5@company.com",
   "value": 53.4,
   "threshold": 30,
   "snapshot": 1,
-  "message": "Analytics Dashboard 5 loaded in 53.4 s (critical > 30 s)",
+  "message": "Analytics Dashboard 5 loaded in 53.4 s (critical: over 30 s)",
   "at": "2026-10-13T07:15:02.114Z"
 }
 ```
 
 ### Alert rules
 
-| Rule | Fires when | Severity | Pushed? |
-|---|---|---|---|
-| `LATENCY_WARN` | 15 s < load ≤ 30 s (the brief's threshold) | warning | No: shown on the dashboard, not pushed |
-| `LATENCY_CRITICAL` | load > 30 s | critical | Yes |
-| `REFRESH_FAILED` | status `FAILED` or `TIMED_OUT` | critical | Yes |
-| `STATUS_UNKNOWN` | status `UNKNOWN` | data-quality | Yes |
+| Rule | Fires when | Severity |
+|---|---|---|
+| `LATENCY_WARN` | load crosses 15 s (the brief's threshold) | warning |
+| `LATENCY_CRITICAL` | load crosses 30 s (escalation; a jump straight past 30 s sends only this) | critical |
+| `REFRESH_FAILED` | status becomes `FAILED` or `TIMED_OUT` | critical |
+| `STATUS_UNKNOWN` | status becomes `UNKNOWN` | data-quality |
 
-**Alert on change:** a report + rule pair alerts when a breach **starts**, stays quiet while it continues, and can alert again after it recovers.
+All four are pushed. **Alert on change:** a report + rule pair alerts when a breach **starts**, stays quiet while it continues, and can alert again after it recovers.
 
 ### Close codes
 

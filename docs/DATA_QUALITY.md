@@ -18,6 +18,8 @@ Every rule runs in `clean.js`; results are written to `data/cleaning_log.csv` an
 
 **Reconciliation:** raw credits 1,206,191.44 − quarantined (−161.04) = clean credits 1,206,352.48, exactly.
 
+**Cross-check:** `sql/04_cost_attribution.sql` implements the cost-vs-usage rule (defect 4) independently in SQL (`REPORTING.V_AWS_COST_VS_USAGE`, `PERCENTILE_DISC(0.95)`); check #10 in `05_checks.sql` confirms it flags the same 103 rows as `clean.js`.
+
 ## Other observations
 
 | Observation | Evidence | How handled |
@@ -33,9 +35,11 @@ Every rule runs in `clean.js`; results are written to `data/cleaning_log.csv` an
 
 | Policy | Alerts over 20 snapshots |
 |---|---|
-| Brief's literal rule: one alert per row over 15 s or failed | 1,636 (82% of rows) |
-| Critical only (> 30 s or failed), per row | 1,217 |
-| Critical only, alert on change (chosen) | **929 (43% fewer than literal)** |
+| One alert per row over 15 s or failed | 1,636 (82% of rows) |
+| **Chosen: alert when a breach starts, same coverage** | **1,109 (32% fewer)** |
+| of which: latency warning (15–30 s) | 180 |
+| of which: latency critical (> 30 s) | 510 |
+| of which: refresh failed / timed out | 419 |
 | Plus UNKNOWN-status data-quality alerts | +93 |
 
 The data is synthetic and values change randomly between snapshots, so real-world noise reduction would differ.

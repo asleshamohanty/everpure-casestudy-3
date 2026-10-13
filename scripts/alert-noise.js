@@ -3,19 +3,18 @@ const path = require("path");
 const rows = require(path.join(__dirname, "..", "data", "clean", "reports_clean.json"));
 const { createAlerter } = require("../server/alerts/engine");
 
+const inOrder = [...rows].sort((a, b) => a.snapshot - b.snapshot);
 const literal = rows.filter((r) => r.loadSec > 15 || r.flags.refreshFailed).length;
-const criticalPerRow = rows.filter((r) => r.loadSec > 30 || r.flags.refreshFailed).length;
 
-const alerter = createAlerter({ pushRules: ["LATENCY_CRITICAL", "REFRESH_FAILED"] });
-let onChange = 0;
-for (const r of [...rows].sort((a, b) => a.snapshot - b.snapshot)) onChange += alerter(r).length;
+const alerter = createAlerter();
+const sent = inOrder.flatMap((r) => alerter(r));
+const count = (rule) => sent.filter((a) => a.rule === rule).length;
+const brief = count("LATENCY_WARN") + count("LATENCY_CRITICAL") + count("REFRESH_FAILED");
 
-const all = createAlerter();
-let withDQ = 0;
-for (const r of [...rows].sort((a, b) => a.snapshot - b.snapshot)) withDQ += all(r).length;
-
-console.log("Brief's literal rule, one alert per breaching row:", literal);
-console.log("Critical only (>30 s or failed), per row:          ", criticalPerRow);
-console.log("Critical only, alert on change:                    ", onChange,
-  `(${Math.round((1 - onChange / literal) * 100)}% fewer than literal)`);
-console.log("  + UNKNOWN status data-quality alerts:            ", withDQ - onChange);
+console.log("Literal rule: one alert per row over 15 s or failed:", literal);
+console.log("Our engine, alert on change (same coverage):        ", brief,
+  `(${Math.round((1 - brief / literal) * 100)}% fewer)`);
+console.log("   latency warning (15-30 s):   ", count("LATENCY_WARN"));
+console.log("   latency critical (> 30 s):   ", count("LATENCY_CRITICAL"));
+console.log("   refresh failed / timed out:  ", count("REFRESH_FAILED"));
+console.log("Plus data-quality (UNKNOWN status):                 ", count("STATUS_UNKNOWN"));

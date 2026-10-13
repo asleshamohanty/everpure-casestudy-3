@@ -64,6 +64,9 @@ con.execute(read_sql("02_load.sql"))
 show(con, "Top 10 reports by cost per view", "SELECT * FROM REPORTING.V_TOP_COST_PER_VIEW ORDER BY cost_rank")
 show(con, "Spend on orphaned reports", "SELECT * FROM REPORTING.V_ORPHAN_SPEND")
 show(con, "Spend with zero views", "SELECT * FROM REPORTING.V_IDLE_REPORT_SPEND ORDER BY report_id")
+show(con, "Defect 4: AWS cost vs usage (worst 5)",
+     "SELECT report_id, snapshot, monthly_active_views, aws_hosting_cost_usd, ROUND(aws_per_view_usd, 2) AS aws_per_view_usd, discrepancy "
+     "FROM REPORTING.V_AWS_COST_VS_USAGE WHERE discrepancy IS NOT NULL ORDER BY aws_per_view_usd DESC NULLS FIRST LIMIT 5")
 checks = show(con, "05_checks.sql", read_sql("05_checks.sql"))
 
 failed = [c for c in checks if not c[3]]

@@ -13,7 +13,8 @@ attributed   AS (SELECT SUM(attributed_credits) AS v, SUM(allocated_credits_incl
 metered      AS (SELECT SUM(credits_used_compute) AS v FROM SIM_ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY),
 cpv          AS (SELECT COUNT(*) AS bad FROM REPORTING.REPORT_COST_ATTRIBUTION
                  WHERE cost_per_view_usd < 0 OR (cost_per_view_usd IS NULL AND views > 0)),
-top1         AS (SELECT report_id, cost_per_view_usd FROM REPORTING.REPORT_COST_ATTRIBUTION WHERE cost_rank = 1)
+top1         AS (SELECT report_id, cost_per_view_usd FROM REPORTING.REPORT_COST_ATTRIBUTION WHERE cost_rank = 1),
+aws_flags    AS (SELECT COUNT(*) AS n FROM REPORTING.V_AWS_COST_VS_USAGE WHERE discrepancy IS NOT NULL)
 SELECT 'all 2,000 CSV rows loaded'                  AS check_name, '2000' AS expected, CAST(n AS VARCHAR) AS actual, n = 2000 AS passed FROM raw_rows
 UNION ALL
 SELECT 'no duplicate (report, snapshot) keys', '2000 / 2000', CAST(n AS VARCHAR) || ' / ' || CAST(distinct_keys AS VARCHAR), n = 2000 AND distinct_keys = 2000 FROM snap
@@ -37,4 +38,6 @@ FROM REPORTING.REPORT_COST_ATTRIBUTION WHERE is_orphaned
 UNION ALL
 SELECT 'SQL agrees with the API: top report', 'RPT_223 at 4.99', report_id || ' at ' || CAST(ROUND(cost_per_view_usd, 2) AS VARCHAR),
        report_id = 'RPT_223' AND ROUND(cost_per_view_usd, 2) = 4.99
-FROM top1;
+FROM top1
+UNION ALL
+SELECT 'SQL agrees with clean.js: AWS cost-vs-usage flags', '103', CAST(n AS VARCHAR), n = 103 FROM aws_flags;

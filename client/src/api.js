@@ -1,22 +1,15 @@
 // One place for every call to our backend. It adds the token automatically.
-export async function api(path, token) {
-  const res = await fetch(`/api/v1${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  const body = await res.json();
-  if (!res.ok) throw new Error(body.error?.message || `Request failed (${res.status})`);
-  return body;
+export async function api(path, token, { method = "GET", body } = {}) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  if (body) headers["Content-Type"] = "application/json";
+  const res = await fetch(`/api/v1${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || `Request failed (${res.status})`);
+  return data;
 }
 
 export async function login(username, password) {
-  const res = await fetch("/api/v1/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  });
-  const body = await res.json();
-  if (!res.ok) throw new Error(body.error?.message || "Login failed");
-  return body.token;
+  return (await api("/auth/login", null, { method: "POST", body: { username, password } })).token;
 }
 
 // Read the role from inside the token (the middle part is base64 JSON).
