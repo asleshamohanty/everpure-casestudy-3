@@ -92,6 +92,15 @@ app.get("/api/v1/costs", requireRole("admin", "owner"), (req, res) => {
   res.json({ pricePerCreditUsd: PRICE_PER_CREDIT, count: result.length, reports: result });
 });
 
+// Admin only: the cleaning log, so data problems are visible in the UI
+const fs = require("fs");
+const { parse } = require("csv-parse/sync");
+const cleaningLog = parse(fs.readFileSync(path.join(__dirname, "..", "data", "cleaning_log.csv"), "utf8"), { columns: true });
+
+app.get("/api/v1/data-quality", requireRole("admin"), (req, res) => {
+  res.json({ rules: cleaningLog });
+});
+
 // ---------- Alerts ----------
 const recentAlerts = []; // last 200 alerts, so a client that reconnects can catch up
 

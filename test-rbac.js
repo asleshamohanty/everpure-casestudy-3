@@ -37,4 +37,6 @@ function check(name, actual, expected) {
   check("owner cannot open others' report", await status("/reports/RPT_200", owner), 404);
   check("admin sees orphans", await status("/reports/orphans", admin), 200);
   check("admin sees costs", await status("/costs", admin), 200);
+  check("admin sees data quality", await status("/data-quality", admin), 200);
+  check("viewer blocked from data quality", await status("/data-quality", viewer), 403);
 })();
