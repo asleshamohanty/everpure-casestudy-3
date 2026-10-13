@@ -19,7 +19,7 @@ export default function Login({ onLogin }) {
   return (
     <div className="login-wrap">
       <form className="card login" onSubmit={submit}>
-        <div className="eyebrow">Platform operations</div>
+        <div className="eyebrow">Internal tool · Platform operations</div>
         <h1>Pure Insights Command Center</h1>
         <p className="muted">Sign in to monitor report health and cost.</p>
         <label>Username<input value={username} onChange={(e) => setUsername(e.target.value)} /></label>
