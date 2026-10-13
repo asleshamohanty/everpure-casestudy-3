@@ -17,6 +17,15 @@ function login(username, password) {
   return jwt.sign({ username, role: user.role, email: user.email || null }, SECRET, { expiresIn: "8h" });
 }
 
+// Returns the user inside a token, or null if the token is missing, fake or expired
+function verifyToken(token) {
+  try {
+    return jwt.verify(token, SECRET);
+  } catch {
+    return null;
+  }
+}
+
 // Middleware 1: WHO are you? No valid token -> 401
 function authenticate(req, res, next) {
   const header = req.headers.authorization || "";      // "Bearer <token>"
@@ -37,4 +46,4 @@ function requireRole(...allowed) {
   };
 }
 
-module.exports = { login, authenticate, requireRole };
+module.exports = { login, authenticate, requireRole, verifyToken };

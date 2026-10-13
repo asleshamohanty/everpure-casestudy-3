@@ -1,6 +1,9 @@
 const express = require("express");
+const http = require("http");
 const path = require("path");
 const { login, authenticate, requireRole } = require("./auth");
+const { createAlertSocket } = require("./ws");
+const { startReplay } = require("./alerts/replay");
 
 const rows = require(path.join(__dirname, "..", "data", "clean", "reports_clean.json"));
 const LATEST = Math.max(...rows.map((r) => r.snapshot));
@@ -89,5 +92,27 @@ app.get("/api/v1/costs", requireRole("admin", "owner"), (req, res) => {
   res.json({ pricePerCreditUsd: PRICE_PER_CREDIT, count: result.length, reports: result });
 });
 
+// ---------- Alerts ----------
+const recentAlerts = []; // last 200 alerts, so a client that reconnects can catch up
+
+app.get("/api/v1/alerts", requireRole("admin", "owner"), (req, res) => {
+  const sinceNum = Number((req.query.since || "a-0").replace("a-", ""));
+  const mine = recentAlerts.filter(
+    (a) => Number(a.id.replace("a-", "")) > sinceNum &&
+      (req.user.role === "admin" || currentOwner[a.reportId] === req.user.email)
+  );
+  res.json({ count: mine.length, alerts: mine });
+});
+
+// Express handles HTTP; the WebSocket shares the same server and port
+const server = http.createServer(app);
+const { broadcast } = createAlertSocket(server, { currentOwner });
+
+startReplay(rows, (alert) => {
+  recentAlerts.push(alert);
+  if (recentAlerts.length > 200) recentAlerts.shift();
+  broadcast(alert);
+}, { intervalMs: Number(process.env.REPLAY_MS || 3000) });
+
 const PORT = 4000;
-app.listen(PORT, () => console.log(`API running at http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`API + WebSocket running at http://localhost:${PORT}`));
