@@ -1,0 +1,25 @@
+# Runs every check on each push and pull request.
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          npm ci
+          pip install duckdb
+      - name: All checks (cleaning, API/RBAC, alerts, SQL)
+        run: npm test
+      - name: Dashboard builds
+        run: |
+          npm install --prefix client
+          npm run build --prefix client

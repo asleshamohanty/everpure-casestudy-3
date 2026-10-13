@@ -1,14 +1,20 @@
 {
   "name": "everpure-3",
   "version": "1.0.0",
-  "main": "first.js",
+  "main": "server/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "setup": "npm install && npm install --prefix client",
+    "start": "node server/server.js",
+    "dev:client": "npm run dev --prefix client",
+    "clean": "node clean.js",
+    "test": "node scripts/test-all.js",
+    "test:sql": "python3 scripts/run_sql.py",
+    "alert-noise": "node scripts/alert-noise.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Pure Insights Command Center: admin dashboard, real-time alerts and Snowflake cost attribution (Everpure case study 3)",
   "dependencies": {
     "csv-parse": "^7.0.3",
     "express": "^5.3.0",
