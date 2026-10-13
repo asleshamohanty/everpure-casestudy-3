@@ -37,6 +37,7 @@ Every error has the same shape:
 | `GET /ownership/audit` | yes | 403 | 403 |
 | `GET /costs` | all | own reports only | 403 |
 | `GET /alerts` | all | own reports only | 403 |
+| `GET /fixit` | all | own reports only | 403 |
 | `GET /data-quality` | yes | 403 | 403 |
 | WebSocket `/ws/alerts` | all alerts + live events | own reports' alerts + live events | closed with 4403 (the dashboard polls every 3 s instead) |
 
@@ -123,6 +124,29 @@ Totals over all 20 snapshots, sorted by cost per view, highest first.
 }
 ```
 `costPerViewUsd = (credits × pricePerCreditUsd + awsUsd) ÷ views`; `null` when views = 0. Negative credits are excluded.
+
+### `GET /api/v1/fixit` (admin, owner)
+
+Ranked recommendations from all 20 snapshots. Every finding names its rule, the evidence and the action. Only cost rules carry a dollar estimate; a report's estimate is its largest cost finding (no double counting).
+```json
+{
+  "assumptions": { "chronicFailureMin": 8, "chronicSlowMin": 17, "pricePerCredit": 3, "medianCostPerView": 2.7134 },
+  "summary": { "reportsNeedingAction": 39, "estimatedSavingsUsd": 317568.29, "totalSpendUsd": 4081006.69,
+               "byRule": { "CHRONIC_REFRESH_FAILURE": 14, "CHRONIC_SLOW": 22, "ORPHANED_AND_COSTLY": 7, "REFRESHING_WITHOUT_USERS": 4 } },
+  "items": [
+    { "priority": 1, "reportId": "RPT_220", "owner": null, "savingsUsd": 45037.02,
+      "findings": [
+        { "rule": "CHRONIC_REFRESH_FAILURE", "impact": "reliability", "savingsUsd": 0,
+          "evidence": "refresh failed in 9 of 20 snapshots (rule: at least 8)",
+          "action": "Investigate the refresh job (schema change, credentials, timeout); retry with backoff; notify the owner" },
+        { "rule": "ORPHANED_AND_COSTLY", "impact": "cost", "savingsUsd": 45037.02,
+          "evidence": "no owner; $3.12 per view vs median $2.71",
+          "action": "Assign an owner, or retire the report (estimate = its full spend)" }
+      ] }
+  ]
+}
+```
+Owners receive only their reports, with the summary recomputed for them. Assigning an owner removes the report's `ORPHANED_AND_COSTLY` finding immediately.
 
 ### `GET /api/v1/alerts?since=a-345` (admin, owner)
 

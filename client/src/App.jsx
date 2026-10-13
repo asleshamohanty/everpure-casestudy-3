@@ -7,12 +7,14 @@ import Orphans from "./pages/Orphans.jsx";
 import Costs from "./pages/Costs.jsx";
 import Alerts from "./pages/Alerts.jsx";
 import DataQuality from "./pages/DataQuality.jsx";
+import Fixit from "./pages/Fixit.jsx";
 
 // Which tabs each role can see. Hiding tabs is for convenience only:
 // the server returns 403 if someone calls the API directly.
 const TABS = [
   { id: "overview", label: "Overview", roles: ["admin", "owner", "viewer"] },
   { id: "alerts", label: "Live alerts", roles: ["admin", "owner"] },
+  { id: "fixit", label: "Fix-it queue", roles: ["admin", "owner"] },
   { id: "orphans", label: "Orphaned reports", roles: ["admin"] },
   { id: "costs", label: "Costs", roles: ["admin", "owner"] },
   { id: "quality", label: "Data quality", roles: ["admin"] },
@@ -62,6 +64,7 @@ export default function App() {
       <main>
         {tab === "overview" && <Overview token={token} role={user.role} tick={tick} clock={clock} />}
         {tab === "alerts" && <Alerts alerts={alerts} status={status} />}
+        {tab === "fixit" && <Fixit token={token} tick={tick} />}
         {tab === "orphans" && <Orphans token={token} tick={tick} />}
         {tab === "costs" && <Costs token={token} tick={tick} />}
         {tab === "quality" && <DataQuality token={token} />}

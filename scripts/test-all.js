@@ -10,6 +10,12 @@ const run = (cmd, args) => spawnSync(cmd, args, { cwd: ROOT, stdio: "inherit" })
 console.log("\n### Data cleaning");
 let failed = run("node", ["clean.js"]) !== 0;
 
+console.log("\n### Fix-it queue validation");
+failed = run("node", ["scripts/validate-fixit.js"]) !== 0 || failed;
+
+console.log("\n### Owner-suggestion backtest (informational)");
+run("node", ["scripts/backtest-owner.js"]);
+
 console.log("\n### Starting server");
 const server = spawn("node", ["server/server.js"], {
   cwd: ROOT,

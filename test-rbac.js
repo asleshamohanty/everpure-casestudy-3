@@ -43,6 +43,12 @@ function check(name, actual, expected) {
   check("admin sees data quality", await status("/data-quality", admin), 200);
   check("viewer blocked from data quality", await status("/data-quality", viewer), 403);
 
+  // Fix-it queue
+  check("admin sees fix-it queue", await status("/fixit", admin), 200);
+  check("viewer blocked from fix-it queue", await status("/fixit", viewer), 403);
+  const ownerQueue = (await call("/fixit", owner)).body.items;
+  check("owner's fix-it queue holds only own reports", ownerQueue.every((it) => it.owner === "user_9@company.com"), true);
+
   // Field trimming: viewers never receive owner emails or costs
   const viewerReport = (await call("/reports", viewer)).body.reports[0];
   check("viewer gets no owner field", "owner" in viewerReport, false);

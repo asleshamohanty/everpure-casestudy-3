@@ -25,6 +25,7 @@
 | `server/auth.js` | Login, JWT, 401/403 middleware | Authorization on the server; the UI hiding a tab is not security |
 | `server/server.js` | REST API and live state | Telemetry (status, load time, views) follows the replay clock; ownership is a separate registry that admins edit. One ownership rule everywhere |
 | `server/alerts/engine.js` | Rules, severity, alert-on-change | Rules defined once; the server, tests and noise analysis share them |
+| `server/fixit.js` | Fix-it queue: rules → evidence → action → savings estimate | Transparent rules, not a model; validated by `scripts/validate-fixit.js` |
 | `server/alerts/replay.js` | Simulated live telemetry, the system clock | CSV has no timestamps, so snapshots are replayed on a timer |
 | `server/ws.js` | WebSocket, token check, role-filtered broadcast, heartbeat | Shares port 4000 with Express |
 | `client/` | React dashboard | Pages reload when a snapshot or ownership event arrives (viewers poll); old data stays on screen while refreshing; bundled fonts; Everpure palette with red kept for critical |
@@ -38,6 +39,8 @@
 | Alert on change + severity tiers | Alert on every breaching row | 82% of rows breach 15 s; one alert per row would bury real problems. On change: 1,109 alerts instead of 1,636 (32% fewer), every breach of the brief's rule still notified. |
 | Separate rules for latency and refresh failure | One combined "unhealthy" alert per report | Combining would hide a refresh failure that starts while a report is already slow. |
 | Ownership as a registry, separate from telemetry | Owner taken from each snapshot | The data's owner field changes between snapshots; responsibility should change only by a deliberate, audited action. |
+| Rules for the fix-it queue | A machine-learning model | 20 synthetic snapshots would only teach a model noise; rules can be checked by hand. A model can be added later and validated against the rules as a baseline. |
+| Owner suggestions not built | Suggest the most frequent past owner | Backtest: 3% correct vs 7% for a random guess; shipping it would confidently assign reports to the wrong people. |
 | Push events + reload, polling for viewers | Push full data over the socket | Keeps one source of truth (the REST API) and keeps viewers off the alert channel. |
 | Token in the WebSocket URL | Cookie-based session | Browsers cannot add headers to WebSockets; over `wss://` the URL is encrypted. |
 | 404 for other owners' reports | 403 | Avoids confirming that a report exists. |

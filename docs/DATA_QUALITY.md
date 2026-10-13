@@ -43,3 +43,34 @@ Every rule runs in `clean.js`; results are written to `data/cleaning_log.csv` an
 | Plus UNKNOWN-status data-quality alerts | +93 |
 
 The data is synthetic and values change randomly between snapshots, so real-world noise reduction would differ.
+
+## Validating the fix-it queue (`node scripts/validate-fixit.js`)
+
+| Invariant | Result |
+|---|---|
+| Every item names a rule, evidence and an action | Pass |
+| Each report appears once; its estimate = its largest cost finding (no double counting) | Pass |
+| Estimated savings ≤ total spend | Pass ($317,568 = 7.8% of $4,081,007) |
+| Reliability findings carry no invented dollar figure | Pass |
+| Chronic-failure count reproducible by hand | Pass |
+
+**Sensitivity:** the thresholds matter a lot, so they should be agreed with the platform team before anyone acts on the counts.
+
+| Threshold | One step lower | Chosen | One step higher |
+|---|---|---|---|
+| Chronic refresh failure (failed in ≥ n of 20) | 37 reports (n = 7) | 14 (n = 8) | 8 (n = 9) |
+| Chronically slow (> 15 s in ≥ n of 20) | 41 (n = 16) | 22 (n = 17) | 11 (n = 18) |
+| Price per credit | $193,761 ($2) | $317,568 ($3) | $411,786 ($4) |
+
+## A feature that did not ship: owner suggestions (`node scripts/backtest-owner.js`)
+
+**Idea:** for each orphaned report, suggest the person who owned it most often in its history.
+**Test:** for the 86 reports whose current owner is known, hide it and predict it from the previous 19 snapshots.
+
+| Method | Correct |
+|---|---|
+| Most frequent past owner | 3 of 86 (3%) |
+| Owner in the previous snapshot | 4 of 86 (5%) |
+| Random guess among 14 owners | 7% |
+
+**Decision:** not shipped. On this data ownership history predicts nothing, so suggestions would confidently point admins at the wrong people. Admins assign owners manually instead, and every change is audited. With real ownership history the same backtest would decide whether to revisit it.

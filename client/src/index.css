@@ -83,3 +83,6 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .assign { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .assign input { padding: 5px 8px; font-size: 13px; width: 200px; }
 .small-btn { padding: 6px 12px; font-size: 13px; }
+tr.top td { vertical-align: top; }
+.finding { margin-bottom: 8px; }
+.wrap { white-space: normal; max-width: 340px; }

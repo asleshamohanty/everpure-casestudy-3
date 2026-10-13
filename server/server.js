@@ -6,6 +6,7 @@ const { parse } = require("csv-parse/sync");
 const { login, authenticate, requireRole } = require("./auth");
 const { createAlertSocket } = require("./ws");
 const { startReplay } = require("./alerts/replay");
+const { buildFixitQueue } = require("./fixit");
 
 const PRICE_PER_CREDIT = 3; // assumption, stated in the README
 const rows = require(path.join(__dirname, "..", "data", "clean", "reports_clean.json"));
@@ -130,6 +131,17 @@ app.get("/api/v1/costs", requireRole("admin", "owner"), (req, res) => {
   }));
   result.sort((a, b) => (b.costPerViewUsd ?? 0) - (a.costPerViewUsd ?? 0));
   res.json({ pricePerCreditUsd: PRICE_PER_CREDIT, count: result.length, reports: result });
+});
+
+// Fix-it queue: ranked, explainable recommendations (admin: all; owner: own reports)
+app.get("/api/v1/fixit", requireRole("admin", "owner"), (req, res) => {
+  const queue = buildFixitQueue(rows, owners, { pricePerCredit: PRICE_PER_CREDIT });
+  if (req.user.role === "owner") {
+    queue.items = queue.items.filter((it) => owners[it.reportId] === req.user.email);
+    queue.summary = { ...queue.summary, reportsNeedingAction: queue.items.length,
+      estimatedSavingsUsd: queue.items.reduce((s, it) => s + it.savingsUsd, 0) };
+  }
+  res.json(queue);
 });
 
 // Admin only: the cleaning log, so data problems are visible in the UI
