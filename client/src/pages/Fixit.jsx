@@ -1,5 +1,7 @@
 import { useApi } from "../useApi";
 
+// $317,568 -> "$318K", $4,081,007 -> "$4.08M": fits a tile; the exact value is shown underneath
+const compact = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: n >= 1e6 ? 2 : 0 });
 const usd = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const RULE_LABEL = {
   CHRONIC_REFRESH_FAILURE: "Refresh keeps failing",
@@ -20,8 +22,11 @@ export default function Fixit({ token, tick }) {
     <>
       <section className="kpis">
         <div className="card kpi"><span className="kpi-value">{summary.reportsNeedingAction}</span><span className="muted">Reports needing action</span></div>
-        <div className="card kpi warn"><span className="kpi-value">{usd(summary.estimatedSavingsUsd)}</span><span className="muted">Estimated savings</span>
-          <span className="muted small">{((100 * summary.estimatedSavingsUsd) / summary.totalSpendUsd).toFixed(1)}% of {usd(summary.totalSpendUsd)} spend</span></div>
+        <div className="card kpi warn" title={`Exactly ${usd(summary.estimatedSavingsUsd)}`}>
+          <span className="kpi-value">{compact(summary.estimatedSavingsUsd)}</span>
+          <span className="muted">Estimated savings</span>
+          <span className="muted small">{usd(summary.estimatedSavingsUsd)} · {((100 * summary.estimatedSavingsUsd) / summary.totalSpendUsd).toFixed(1)}% of {compact(summary.totalSpendUsd)} spend</span>
+        </div>
         {Object.entries(summary.byRule).map(([rule, n]) => (
           <div key={rule} className="card kpi"><span className="kpi-value">{n}</span><span className="muted">{RULE_LABEL[rule]}</span></div>
         ))}
