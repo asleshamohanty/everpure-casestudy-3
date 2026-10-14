@@ -1,6 +1,6 @@
 # Pure Insights Command Center
 
-**Everpure FY27 Internship Assessment <br> Case Study 3: Technical Data AI Validation – Monetization**
+**Everpure FY27 Internship Assessment <br> Case Study 3: Technical Data AI Validation – Monetization** <br>
 Aslesha Mohanty 
 
 **Demo video:** [Watch the 1:40 demo (silent walkthrough)](https://drive.google.com/file/d/1gLMSe_OnrQ4u5ZVGBeWeYpVcfJlapIPT/view?usp=sharing)  ·  **Full write-up:** [docs/WRITEUP.md](docs/WRITEUP.md)
