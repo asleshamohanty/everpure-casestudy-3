@@ -17,7 +17,8 @@ Needs Node.js 20+, Python 3 and `pip3 install duckdb` (for the SQL tests).
 npm run setup          # install server + dashboard packages
 npm start              # API + WebSocket on http://localhost:4000
 npm run dev:client     # dashboard on http://localhost:5173   (second terminal)
-npm test               # every check: cleaning, API/RBAC, alerts, SQL
+npm test               # every check: cleaning, fix-it, API/RBAC/security, alerts, SQL
+npm run reset-state    # forget ownership changes made in the dashboard
 ```
 
 | Demo login | Password | Sees |
@@ -52,14 +53,29 @@ npm test               # every check: cleaning, API/RBAC, alerts, SQL
 
 | Assumption | Why | Where to change it |
 |---|---|---|
+| Roles: admin (platform team), owner (report author), viewer (report consumer), with least-privilege permissions (see `docs/API_SPEC.md`) | The brief requires RBAC but does not define roles or permissions; these mirror who uses an internal reporting portal | `server/auth.js`, `server/server.js` |
 | Every 100 CSV rows are one snapshot in time (20 snapshots) | The CSV has no timestamp; rows repeat RPT_200–299 twenty times in order | `clean.js`, `sql/02_load.sql` |
 | Ownership registry starts from the owner in the latest snapshot; admins can change it | Owners change between snapshots (RPT_203 has 10); ownership is a governance record, not telemetry | `server/server.js`, `sql/04_cost_attribution.sql` |
 | $3.00 per Snowflake credit | Real price depends on Everpure's contract | `server/server.js`, `REPORTING.COST_CONFIG` |
 | 10% warehouse idle time in the simulated metering log | Only used to demonstrate idle-time allocation | `REPORTING.COST_CONFIG` |
 | Snapshots are replayed every 3 s as live telemetry (the health view follows the replay) | No live telemetry exists; replay simulates it | `REPLAY_MS` env variable |
-| Ownership changes are kept in memory | Enough for the case study; production would store them in a database | `server/server.js` |
+| Ownership changes are saved to `data/state/ownership.json` | Survives restarts without needing a database; production would use a database table | `server/server.js`, `npm run reset-state` |
 
 The dataset file name differs from the brief (`Case_Study_3_Pure_Insights_Monitoring.csv` in the brief; `Case_Study_3_Technical_Data_AI_Validation_Intern_-_Monetization.csv` received). The received file is used, saved as `data/raw/reports.csv`.
+
+## Security and known limitations
+
+| Area | What the project does | Production version |
+|---|---|---|
+| Passwords | Demo users stored as salted scrypt hashes; constant-time comparison | Corporate single sign-on (OIDC/SAML) |
+| Signing secret | Read from `JWT_SECRET`; the server **refuses to start** in production without it | Secrets manager |
+| Password guessing | 10 failed logins per minute per address and username, then `429` | Plus account lockout and alerting |
+| Sessions | 8-hour token, kept in `sessionStorage` (survives a refresh, cleared when the tab closes); expired or invalid sessions return to the login page | httpOnly secure cookie via SSO |
+| HTTP hardening | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cache-Control: no-store`; framework header hidden; 10 KB body limit | Plus TLS and a Content-Security-Policy at the load balancer |
+| Ownership changes | Persisted to a JSON file (write-then-rename) with an audit trail; tests use a separate file | Database with a permanent audit log |
+| Data | A fixed CSV replayed as a live feed, so values repeat every 60 s. Kept deliberately: inventing extra data would hide what the real data shows | Real event stream from the portal |
+| Fix-it actions | Standard playbooks per problem type; root causes need refresh error logs the data does not include | Link each finding to its error logs |
+| SQL tests | Need `pip3 install duckdb`; skipped with a message locally if missing, required in CI | Run against a real Snowflake account |
 
 ## Project structure
 
@@ -80,6 +96,7 @@ scripts/
   alert-noise.js         measures alert volume per policy
   validate-fixit.js      fix-it queue invariants + threshold sensitivity
   backtest-owner.js      owner-suggestion backtest (negative result)
+  reset-state.js         `npm run reset-state`: clear saved ownership changes
 test-rbac.js, test-alerts.js   automated API and WebSocket tests
 validate.js, first.js, load.js, watch-alert.js   learning scripts from the first build steps
 docs/                    API spec, architecture, data quality
@@ -87,13 +104,13 @@ docs/                    API spec, architecture, data quality
 
 ## Testing
 
-`npm test` runs 5 suites, 56 checks plus the cleaning reconciliation; all must pass:
+`npm test` runs 5 suites, 61 checks plus the cleaning reconciliation; all must pass:
 
 | Suite | Checks | What it proves |
 |---|---|---|
 | Cleaning | totals reconcile | raw credits − quarantined = clean credits, exactly |
 | Fix-it queue | 6 | every item has evidence, no double counting, savings never exceed spend, no invented dollar figures, counts reproducible by hand (plus a sensitivity printout) |
-| API + RBAC | 26 | 401 without a token, 403 for the wrong role, viewers never receive emails or costs, owners see only their reports, only admins reassign owners (validated, audited, reflected in health), fix-it queue scoped by role |
+| API + RBAC + security | 31 | security headers, forged tokens rejected, login rate limit (429), 401 without a token, 403 for the wrong role, viewers never receive emails or costs, owners see only their reports, only admins reassign owners (validated, audited, reflected in health), fix-it queue scoped by role |
 | Real-time alerts | 14 | the system is live (snapshot events arrive, health view moves), viewers and fake tokens refused, owners get only their alerts, every >15 s breach notified, >30 s critical, no repeat alerts during an ongoing breach, catch-up after reconnect |
 | SQL | 10 | all rows loaded, no duplicates after a re-run, quarantine reconciles, allocated = metered credits, SQL matches the API and the cleaning script |
 

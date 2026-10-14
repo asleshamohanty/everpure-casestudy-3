@@ -8,6 +8,8 @@ Base URL (local): `http://localhost:4000` · All responses are JSON · Version p
 2. Send it on every REST call: `Authorization: Bearer <token>`.
 3. The WebSocket takes it as a query parameter, because browsers cannot set headers on WebSockets: `/ws/alerts?token=<token>` (use `wss://` in production so the token is encrypted).
 
+Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and `Cache-Control: no-store`. Request bodies over 10 KB are refused.
+
 The token carries `username`, `role` (`admin` | `owner` | `viewer`) and, for owners, `email`. Roles are enforced on the server for every request; the UI only hides what a role cannot use.
 
 ## Errors
@@ -21,6 +23,7 @@ Every error has the same shape:
 | HTTP | `code` | When |
 |---|---|---|
 | 401 | `BAD_LOGIN` | Wrong username or password |
+| 429 | `RATE_LIMITED` | More than 10 failed logins in a minute for the same address and username |
 | 401 | `UNAUTHENTICATED` | Missing, invalid or expired token |
 | 403 | `FORBIDDEN` | Valid token, but the role may not use this endpoint |
 | 400 | `INVALID_OWNER` | Owner is not an email address or null |

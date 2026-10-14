@@ -20,6 +20,24 @@ const owners = {};
 for (const r of rows.filter((x) => x.snapshot === LAST)) owners[r.reportId] = r.owner;
 const ownershipAudit = []; // every reassignment: who, what, when
 
+// Ownership changes are saved to a small JSON file so they survive a restart.
+// (Production: a database table.) `npm run reset-state` returns to the CSV's owners.
+const STATE_FILE = process.env.STATE_FILE || path.join(__dirname, "..", "data", "state", "ownership.json");
+try {
+  const saved = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
+  for (const [id, owner] of Object.entries(saved.owners || {})) if (id in owners) owners[id] = owner;
+  ownershipAudit.push(...(saved.audit || []));
+  console.log(`Loaded ${ownershipAudit.length} ownership change(s) from ${path.relative(process.cwd(), STATE_FILE)}`);
+} catch {
+  /* no saved state yet: start from the CSV */
+}
+function saveState() {
+  fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+  const tmp = STATE_FILE + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify({ owners, audit: ownershipAudit }, null, 2));
+  fs.renameSync(tmp, STATE_FILE); // write-then-rename: a crash never leaves a half-written file
+}
+
 // 2. Telemetry clock: which snapshot is "now". The replay advances it every few seconds.
 const live = { snapshot: 1, total: LAST, updatedAt: new Date().toISOString() };
 
@@ -46,12 +64,40 @@ function visibleTo(user, list) {
 }
 
 const app = express();
-app.use(express.json()); // lets us read JSON sent in a request body
+app.disable("x-powered-by");                 // don't advertise the framework
+app.use(express.json({ limit: "10kb" }));    // read JSON bodies; refuse oversized ones
+app.use((req, res, next) => {                // basic security headers on every response
+  res.set({
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Cache-Control": "no-store",
+  });
+  next();
+});
+
+// Login rate limit: at most 10 failed attempts per minute per address + username (stops password guessing)
+const failedLogins = new Map();
+const WINDOW_MS = 60 * 1000;
+const MAX_FAILURES = 10;
+function recentFailures(key) {
+  const now = Date.now();
+  const list = (failedLogins.get(key) || []).filter((t) => now - t < WINDOW_MS);
+  failedLogins.set(key, list);
+  return list;
+}
 
 // ---------- Public route: login ----------
 app.post("/api/v1/auth/login", (req, res) => {
-  const token = login(req.body.username, req.body.password);
-  if (!token) return res.status(401).json({ error: { code: "BAD_LOGIN", message: "Wrong username or password" } });
+  const key = `${req.ip}|${req.body?.username}`;
+  if (recentFailures(key).length >= MAX_FAILURES) {
+    return res.status(429).json({ error: { code: "RATE_LIMITED", message: "Too many failed attempts. Try again in a minute." } });
+  }
+  const token = login(req.body?.username, req.body?.password);
+  if (!token) {
+    recentFailures(key).push(Date.now());
+    return res.status(401).json({ error: { code: "BAD_LOGIN", message: "Wrong username or password" } });
+  }
   res.json({ token });
 });
 
@@ -107,6 +153,7 @@ app.patch("/api/v1/reports/:id/owner", requireRole("admin"), (req, res) => {
   const change = { at: new Date().toISOString(), by: req.user.username, reportId: id, from: owners[id], to: owner };
   owners[id] = owner;
   ownershipAudit.unshift(change);
+  saveState();
   broadcastEvent({ type: "ownership", reportId: id, owner });
   res.json(change);
 });

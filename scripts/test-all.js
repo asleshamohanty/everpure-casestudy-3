@@ -17,9 +17,15 @@ console.log("\n### Owner-suggestion backtest (informational)");
 run("node", ["scripts/backtest-owner.js"]);
 
 console.log("\n### Starting server");
+// Tests use their own temporary state file, so they never touch ownership changes made in the demo
+const fs = require("fs");
+const os = require("os");
+const TEST_STATE = path.join(os.tmpdir(), `pic-test-ownership-${process.pid}.json`);
+const cleanUp = () => { try { fs.rmSync(TEST_STATE, { force: true }); } catch { /* best effort */ } };
+cleanUp();
 const server = spawn("node", ["server/server.js"], {
   cwd: ROOT,
-  env: { ...process.env, REPLAY_MS: "1000" }, // faster replay so the alert test sees several snapshots
+  env: { ...process.env, REPLAY_MS: "1000", STATE_FILE: TEST_STATE, PORT: "4000" },
 });
 
 server.stdout.on("data", (chunk) => {
@@ -31,9 +37,18 @@ server.stdout.on("data", (chunk) => {
   console.log("\n### Real-time alert tests");
   failed = run("node", ["test-alerts.js"]) !== 0 || failed;
   server.kill();
+  cleanUp();
 
   console.log("\n### SQL suite (DuckDB)");
-  failed = run("python3", ["scripts/run_sql.py"]) !== 0 || failed;
+  const hasDuckdb = spawnSync("python3", ["-c", "import duckdb"], { cwd: ROOT }).status === 0;
+  if (hasDuckdb) {
+    failed = run("python3", ["scripts/run_sql.py"]) !== 0 || failed;
+  } else if (process.env.CI) {
+    console.log("FAIL  DuckDB is required in CI");
+    failed = true;
+  } else {
+    console.log("SKIPPED  Python package 'duckdb' not installed. Run: pip3 install duckdb");
+  }
 
   console.log(failed ? "\nSOME CHECKS FAILED" : "\nALL CHECKS PASSED");
   process.exit(failed ? 1 : 0);

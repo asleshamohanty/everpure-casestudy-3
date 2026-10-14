@@ -9,7 +9,8 @@
     "clean": "node clean.js",
     "test": "node scripts/test-all.js",
     "test:sql": "python3 scripts/run_sql.py",
-    "alert-noise": "node scripts/alert-noise.js"
+    "alert-noise": "node scripts/alert-noise.js",
+    "reset-state": "node scripts/reset-state.js"
   },
   "keywords": [],
   "author": "",

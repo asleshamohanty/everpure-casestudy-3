@@ -48,6 +48,8 @@ export default function Overview({ token, role, tick }) {
                 <th>Refresh</th>
                 <th className="num">Load time</th>
                 <th className="num">Monthly views</th>
+                <th className="num">Peak users</th>
+                <th className="num">Queries (30 d)</th>
               </tr>
             </thead>
             <tbody>
@@ -58,6 +60,8 @@ export default function Overview({ token, role, tick }) {
                   <td><span className={`pill ${STATUS_CLASS[r.status]}`}>{r.status}</span></td>
                   <td className={`num ${r.loadSec > 30 ? "text-bad" : r.loadSec > 15 ? "text-warn" : ""}`}>{r.loadSec.toFixed(1)} s</td>
                   <td className="num">{r.views.toLocaleString()}</td>
+                  <td className="num">{r.peakUsers.toLocaleString()}</td>
+                  <td className="num">{r.queries.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>

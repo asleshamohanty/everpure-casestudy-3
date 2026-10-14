@@ -26,12 +26,15 @@ export default function ReportDetail({ id, token, role, onClose }) {
           <>
             <p className="small">
               Across {history.length} snapshots: <strong>{failed}</strong> failed refreshes,{" "}
-              <strong>{slow}</strong> loads over 15 s.
+              <strong>{slow}</strong> loads over 15 s,{" "}
+              <strong>{history.reduce((s, h) => s + h.views, 0).toLocaleString()}</strong> views,{" "}
+              <strong>{history.reduce((s, h) => s + h.queries, 0).toLocaleString()}</strong> queries.
             </p>
             <table>
               <thead>
                 <tr>
                   <th>Snap</th><th>Refresh</th><th>Load time</th>
+                  <th className="num">Views</th><th className="num">Peak users</th><th className="num">Queries</th>
                   {role !== "viewer" && <th>Owner seen in data</th>}
                 </tr>
               </thead>
@@ -47,6 +50,9 @@ export default function ReportDetail({ id, token, role, onClose }) {
                         <span className="num small">{h.loadSec.toFixed(1)} s</span>
                       </div>
                     </td>
+                    <td className="num">{h.views.toLocaleString()}</td>
+                    <td className={`num ${h.peakUsers > h.views ? "text-warn" : ""}`} title={h.peakUsers > h.views ? "More concurrent users than monthly views: flagged in data quality" : undefined}>{h.peakUsers}</td>
+                    <td className="num">{h.queries.toLocaleString()}</td>
                     {role !== "viewer" && <td className="muted small">{h.observedOwner ?? "none"}</td>}
                   </tr>
                 ))}

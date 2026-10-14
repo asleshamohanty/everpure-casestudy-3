@@ -29,6 +29,16 @@ function check(name, actual, expected) {
   const owner = await login("owner", "owner123");
   const viewer = await login("viewer", "viewer123");
 
+  // Security basics
+  const health = await fetch(`${BASE}/health/summary`, { headers: { Authorization: `Bearer ${admin}` } });
+  check("security header set (nosniff)", health.headers.get("x-content-type-options"), "nosniff");
+  check("framework not advertised", health.headers.get("x-powered-by"), null);
+  check("forged token -> 401", await status("/health/summary", admin.slice(0, -4) + "AAAA"), 401);
+  let lastStatus;
+  for (let i = 0; i < 11; i++) lastStatus = await status("/auth/login", null, { method: "POST", body: { username: "rate-limit-test", password: "x" } });
+  check("11th failed login in a minute -> 429", lastStatus, 429);
+  check("rate limit is per username (admin still logs in)", typeof (await login("admin", "admin123")), "string");
+
   // Who are you? (401) / Are you allowed? (403)
   check("no token -> 401", await status("/health/summary"), 401);
   check("wrong password -> no token", await login("admin", "wrong"), undefined);

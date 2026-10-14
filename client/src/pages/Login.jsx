@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { login } from "../api";
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, notice }) {
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState(null);
@@ -22,6 +22,7 @@ export default function Login({ onLogin }) {
         <div className="eyebrow">Internal tool · Platform operations</div>
         <h1>Pure Insights Command Center</h1>
         <p className="muted">Sign in to monitor report health and cost.</p>
+        {notice && <p className="notice">{notice}</p>}
         <label>Username<input value={username} onChange={(e) => setUsername(e.target.value)} /></label>
         <label>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
         {error && <p className="error">{error}</p>}
