@@ -15,7 +15,7 @@ Because the role is about validation, I treated every number as something to pro
 |---|---|
 | **~$318K spend at stake** | 39 of 100 reports need action. Up to $317,568 (7.8% of $4.08M spend, at $3/credit) could be recovered if the flagged reports are retired or their idle refreshes paused |
 | **14 orphaned reports** | No owner, yet they account for 14.4% of all spend. Admins can assign an owner from the dashboard, and every change is audited |
-| **82% of loads over 15 s** | So alerting fires when a problem starts, not on every slow row: 1,109 alerts instead of 1,636 (32% fewer), with no breach missed |
+| **75% of loads over 15 s** | With refresh failures, 82% of rows breach the brief's alert rule. So alerting fires when a problem starts, not on every slow row: 1,109 alerts instead of 1,636 (32% fewer), with no breach missed |
 | **SQL = API** | Snowflake SQL and the Node.js API independently find the same most expensive report: RPT_223 at $4.99 per view |
 | **61 automated checks** | Data reconciliation, RBAC, alerts, fix-it invariants and SQL, run on every push by GitHub Actions |
 | **1 feature not shipped** | An owner-suggestion idea was backtested at 3% accuracy, worse than random (7%), so I left it out |

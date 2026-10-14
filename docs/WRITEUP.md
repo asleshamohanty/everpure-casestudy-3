@@ -24,7 +24,7 @@ Ownership turned out to be messy: one report had 10 different owners across 20 r
 
 ## Task 2: real-time alerts
 
-Alerts are pushed over a WebSocket the moment a report crosses 15 seconds (warning), crosses 30 seconds (critical), or its refresh fails. While testing I found that 82% of rows breach 15 seconds, so one alert per breaching row would bury the real problems. My engine alerts once when a problem starts and stays quiet while it continues. That is 1,109 alerts instead of 1,636 (32% fewer) without missing any breach the brief asks about.
+Alerts are pushed over a WebSocket the moment a report crosses 15 seconds (warning), crosses 30 seconds (critical), or its refresh fails. While testing I found that 75% of loads are slower than 15 seconds, and with refresh failures 82% of rows breach the brief's rule, so one alert per breaching row would bury the real problems. My engine alerts once when a problem starts and stays quiet while it continues. That is 1,109 alerts instead of 1,636 (32% fewer) without missing any breach the brief asks about.
 
 If the connection drops, the dashboard reconnects with increasing delays and fetches any alerts it missed. Viewers are not allowed on the alert channel, and owners only receive alerts for their own reports.
 
@@ -46,7 +46,7 @@ I also tried a feature that did not make it. The idea was to suggest an owner fo
 
 - **39 of 100 reports need action**, with up to **~$318K of spend at stake** (7.8% of spend, at an assumed $3 per credit) if the flagged reports are retired or their idle refreshes paused: 14 refreshes keep failing, 22 reports are chronically slow, 7 are orphaned and costly, 4 keep refreshing with nobody looking.
 - **14 reports have no owner** and account for **14.4% of all spend**.
-- **82% of loads are slower than 15 seconds.** The alerting threshold in the brief is breached so often that alerting has to be smart about it.
+- **75% of loads are slower than 15 seconds** (1,490 of 2,000), and 82% of rows breach the brief's rule once failed refreshes are included. The alerting threshold in the brief is breached so often that alerting has to be smart about it.
 - **RPT_223 is the most expensive report per view** at $4.99. The median is about $2.71.
-- **4 snapshots had zero views but still cost money**, for example RPT_230 at about $2,575 of compute.
+- **4 snapshots had zero views but still cost money**, for example RPT_230 at about $2,575 of Snowflake compute (858 credits at $3).
 - **Thresholds matter.** Moving "chronic failure" from 8 to 7 failed refreshes out of 20 flags 37 reports instead of 14, so the thresholds should be agreed with the platform team before anyone acts on the counts.

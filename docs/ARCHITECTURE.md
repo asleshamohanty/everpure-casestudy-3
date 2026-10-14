@@ -36,7 +36,7 @@
 | Decision | Alternative | Why |
 |---|---|---|
 | WebSocket | Server-sent events | Both satisfy the brief; WebSocket leaves room for two-way actions such as acknowledging an alert. SSE would be simpler for one-way push. |
-| Alert on change + severity tiers | Alert on every breaching row | 82% of rows breach 15 s; one alert per row would bury real problems. On change: 1,109 alerts instead of 1,636 (32% fewer), every breach of the brief's rule still notified. |
+| Alert on change + severity tiers | Alert on every breaching row | 82% of rows breach the brief's rule (over 15 s or failed); one alert per row would bury real problems. On change: 1,109 alerts instead of 1,636 (32% fewer), every breach of the brief's rule still notified. |
 | Separate rules for latency and refresh failure | One combined "unhealthy" alert per report | Combining would hide a refresh failure that starts while a report is already slow. |
 | Ownership as a registry, separate from telemetry | Owner taken from each snapshot | The data's owner field changes between snapshots; responsibility should change only by a deliberate, audited action. |
 | Rules for the fix-it queue | A machine-learning model | 20 synthetic snapshots would only teach a model noise; rules can be checked by hand. A model can be added later and validated against the rules as a baseline. |
