@@ -3,7 +3,7 @@
 **Everpure FY27 Internship Assessment · Case Study 3: Technical Data AI Validation – Monetization**
 Aslesha Mohanty · Submitted 14 October 2026
 
-**Demo video:** [Watch the demo](ADD_VIDEO_LINK_HERE)  ·  **Full write-up:** [docs/WRITEUP.md](docs/WRITEUP.md)
+**Demo video:** [Watch the 1:40 demo (silent walkthrough)](https://drive.google.com/file/d/1gLMSe_OnrQ4u5ZVGBeWeYpVcfJlapIPT/view?usp=sharing)  ·  **Full write-up:** [docs/WRITEUP.md](docs/WRITEUP.md)
 
 Everpure moved its internal reporting from Tableau Server to a custom portal and lost the admin views Tableau gave for free. Nobody could easily see which reports were failing, which were slow, who owned them or what they cost. I built the missing command center: a live admin dashboard with role-based access, real-time alerts, Snowflake cost attribution, and a fix-it queue that turns all of that into a ranked list of actions.
 
@@ -20,12 +20,12 @@ Because the role is about validation, I treated every number as something to pro
 | **61 automated checks** | Data reconciliation, RBAC, alerts, fix-it invariants and SQL, run on every push by GitHub Actions |
 | **1 feature not shipped** | An owner-suggestion idea was backtested at 3% accuracy, worse than random (7%), so I left it out |
 
-![Fix-it queue: 39 reports ranked with evidence, a recommended action and the spend at stake](docs/screenshots/fixit-queue.png)
+![Overview: live health tiles and the report table, updated every snapshot](docs/screenshots/overview.png)
 
 <details>
-<summary>Overview tab (live health, updated every snapshot)</summary>
+<summary>Fix-it queue (39 reports ranked with evidence, an action and the spend at stake)</summary>
 
-![Overview: live health tiles and the report table](docs/screenshots/overview.png)
+![Fix-it queue: 39 reports ranked with evidence, a recommended action and the spend at stake](docs/screenshots/fixit-queue.png)
 
 </details>
 
