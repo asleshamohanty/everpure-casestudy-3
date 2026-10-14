@@ -177,8 +177,3 @@ The dataset I received is named differently from the brief (`Case_Study_3_Techni
 | Fix-it actions are standard playbooks | Each finding shows its evidence | Link to refresh error logs for root causes |
 | Synthetic data | Findings are stated as findings on this dataset, and dollar figures as spend at stake, not guaranteed savings | Re-run on real data |
 
----
-
-## How this was built
-
-I used an AI assistant as a tutor and pair programmer. I ran, tested and reviewed every part, and can explain each design decision and its trade-offs.
