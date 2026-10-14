@@ -24,7 +24,7 @@ export default function Fixit({ token, tick }) {
         <div className="card kpi"><span className="kpi-value">{summary.reportsNeedingAction}</span><span className="muted">Reports needing action</span></div>
         <div className="card kpi warn" title={`Exactly ${usd(summary.estimatedSavingsUsd)}`}>
           <span className="kpi-value">{compact(summary.estimatedSavingsUsd)}</span>
-          <span className="muted">Estimated savings</span>
+          <span className="muted">Spend at stake</span>
           <span className="muted small">{usd(summary.estimatedSavingsUsd)} · {((100 * summary.estimatedSavingsUsd) / summary.totalSpendUsd).toFixed(1)}% of {compact(summary.totalSpendUsd)} spend</span>
         </div>
         {Object.entries(summary.byRule).map(([rule, n]) => (
@@ -34,14 +34,14 @@ export default function Fixit({ token, tick }) {
       <p className="muted small">
         Rules: refresh failed in ≥ {assumptions.chronicFailureMin} of 20 snapshots · over 15 s in ≥ {assumptions.chronicSlowMin} of 20 ·
         no owner and cost per view above the median (${assumptions.medianCostPerView.toFixed(2)}) · zero views but still refreshing.
-        Savings are estimates at ${assumptions.pricePerCredit} per credit; a report counts once, at its largest cost finding.
+        Spend at stake = what the flagged reports cost, recoverable if they are retired or their idle refreshes paused (at ${assumptions.pricePerCredit} per credit). A report counts once, at its largest cost finding.
         Reliability problems carry no dollar figure.
       </p>
 
       <section className="card">
         <h2>Fix-it queue</h2>
         <table>
-          <thead><tr><th className="num">#</th><th>Report</th><th>Problem and evidence</th><th>Recommended action</th><th className="num">Est. savings</th></tr></thead>
+          <thead><tr><th className="num">#</th><th>Report</th><th>Problem and evidence</th><th>Recommended action</th><th className="num">Spend at stake</th></tr></thead>
           <tbody>
             {items.map((it) => (
               <tr key={it.reportId} className="top">

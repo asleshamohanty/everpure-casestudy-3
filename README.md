@@ -1,128 +1,183 @@
 # Pure Insights Command Center
 
-Admin dashboard, real-time alerting and Snowflake cost attribution for Everpure's custom analytics portal.
-Everpure FY27 Internship Assessment, **Case Study 3: Technical Data AI Validation – Monetization**.
+**Everpure FY27 Internship Assessment · Case Study 3: Technical Data AI Validation – Monetization**
+Aslesha Mohanty · Submitted 14 October 2026
 
-## The problem
+**Demo video:** [Watch the demo](ADD_VIDEO_LINK_HERE)  ·  **Full write-up:** [docs/WRITEUP.md](docs/WRITEUP.md)
 
-Everpure moved its internal reports from Tableau Server to a custom portal (React, Node.js, Snowflake, AWS) and lost Tableau's built-in admin views. Nobody could see which reports fail to refresh, which are slow, who owns them, or what they cost. This project rebuilds that visibility as a live monitor, adds per-report cost attribution, lets admins fix ownership, and validates that its own signals can be trusted.
+Everpure moved its internal reporting from Tableau Server to a custom portal and lost the admin views Tableau gave for free. Nobody could easily see which reports were failing, which were slow, who owned them or what they cost. I built the missing command center: a live admin dashboard with role-based access, real-time alerts, Snowflake cost attribution, and a fix-it queue that turns all of that into a ranked list of actions.
 
-**What you see when it runs:** health tiles and the report table update every few seconds as telemetry arrives; alerts are pushed the moment a report crosses 15 s or a refresh fails; clicking a report shows its 20-snapshot history; a **fix-it queue** ranks what to fix first, why, and what it is worth; an admin can assign an owner to an orphaned report and the orphan count, the queue and its savings update immediately.
+Because the role is about validation, I treated every number as something to prove. The data was checked before use, totals reconcile, the SQL and the API compute the same answers independently, and one feature I designed was tested, failed, and deliberately left out.
 
-## Quick start
+## Results at a glance
 
-Needs Node.js 20+, Python 3 and `pip3 install duckdb` (for the SQL tests).
+| | |
+|---|---|
+| **~$318K spend at stake** | 39 of 100 reports need action. Up to $317,568 (7.8% of $4.08M spend, at $3/credit) could be recovered if the flagged reports are retired or their idle refreshes paused |
+| **14 orphaned reports** | No owner, yet they account for 14.4% of all spend. Admins can assign an owner from the dashboard, and every change is audited |
+| **82% of loads over 15 s** | So alerting fires when a problem starts, not on every slow row: 1,109 alerts instead of 1,636 (32% fewer), with no breach missed |
+| **SQL = API** | Snowflake SQL and the Node.js API independently find the same most expensive report: RPT_223 at $4.99 per view |
+| **61 automated checks** | Data reconciliation, RBAC, alerts, fix-it invariants and SQL, run on every push by GitHub Actions |
+| **1 feature not shipped** | An owner-suggestion idea was backtested at 3% accuracy, worse than random (7%), so I left it out |
+
+![Fix-it queue: 39 reports ranked with evidence, a recommended action and the spend at stake](docs/screenshots/fixit-queue.png)
+
+<details>
+<summary>Overview tab (live health, updated every snapshot)</summary>
+
+![Overview: live health tiles and the report table](docs/screenshots/overview.png)
+
+</details>
+
+---
+
+## 1. How to start
+
+You need Node.js 20+, Python 3 and `pip3 install duckdb` (DuckDB is only used to test the SQL).
 
 ```bash
-npm run setup          # install server + dashboard packages
+npm run setup          # install server and dashboard packages
 npm start              # API + WebSocket on http://localhost:4000
-npm run dev:client     # dashboard on http://localhost:5173   (second terminal)
-npm test               # every check: cleaning, fix-it, API/RBAC/security, alerts, SQL
-npm run reset-state    # forget ownership changes made in the dashboard
+npm run dev:client     # dashboard on http://localhost:5173 (second terminal)
 ```
 
-| Demo login | Password | Sees |
+Open **http://localhost:5173** and sign in:
+
+| Login | Password | What you will see |
 |---|---|---|
-| `admin` | `admin123` | Everything: live health, alerts, fix-it queue, orphans (and assigning owners), costs, data quality |
-| `owner` | `owner123` | Their 9 reports (user_9@company.com): alerts, fix-it items and costs |
-| `viewer` | `viewer123` | Health overview only; no owner emails, no costs, no alerts |
+| `admin` | `admin123` | Everything: live health, alerts, fix-it queue, orphaned reports (with owner assignment), costs, data quality |
+| `owner` | `owner123` | Only the 9 reports owned by user_9@company.com: their alerts, fix-it items and costs |
+| `viewer` | `viewer123` | Health overview only, without owner emails, costs or alerts |
 
-## How the deliverables map to the brief
+Other commands:
 
-| Brief | Where |
+```bash
+npm test               # every check (61 tests + reconciliation)
+npm run reset-state    # forget owner changes made in the dashboard
+npm run alert-noise    # alert volume under different alerting policies
+```
+
+---
+
+## 2. Deliverables
+
+| The brief asked for | Where to find it |
 |---|---|
-| Task 1: React + Node/Express dashboard with RBAC, system health, orphaned reports | `client/`, `server/server.js`, `server/auth.js` |
-| Task 2: WebSocket alerts when load latency > 15 s or refreshes fail | `server/alerts/`, `server/ws.js`, `client/src/useLive.js` |
-| Task 3: SQL against simulated Snowflake ACCOUNT_USAGE; credits per report; cost per active view | `sql/01–05`, run with `scripts/run_sql.py` |
-| Deliverable 2: REST API & WebSocket specification | [`docs/API_SPEC.md`](docs/API_SPEC.md) |
-| Data defects: identify, clean, document | `clean.js` → `data/cleaning_log.csv`, [`docs/DATA_QUALITY.md`](docs/DATA_QUALITY.md) |
-| Architecture and design decisions | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| **1. Runnable full-stack codebase** (React frontend, Node.js backend) | `client/` (React + Vite) and `server/` (Node.js + Express). Start with section 1 |
+| **2. REST API & WebSocket technical specification** | [`docs/API_SPEC.md`](docs/API_SPEC.md) |
+| **3. Snowflake cloud cost allocation SQL script suite** | [`sql/`](sql/): `01_ddl.sql` to `05_checks.sql`, run locally with `npm run test:sql` |
+| Task 1: dashboard with RBAC, system health, orphaned reports | Overview, Orphaned reports and Data quality tabs; `server/server.js`, `server/auth.js` |
+| Task 2: real-time alerts when load time exceeds 15 s or a refresh fails | Live alerts tab; `server/alerts/`, `server/ws.js`, `client/src/useLive.js` |
+| Task 3: credits per report and unit cost per active user view | Costs tab; `sql/04_cost_attribution.sql` |
+| Data defects found, cleaned and documented | `clean.js` → `data/cleaning_log.csv`; [`docs/DATA_QUALITY.md`](docs/DATA_QUALITY.md) |
 
-## Key findings
+### Other documents
 
-- **39 of 100 reports need action, with about $318K (7.8% of spend) in estimated savings.** 14 refreshes keep failing, 22 reports are chronically slow, 7 are orphaned and costly, 4 keep refreshing with no viewers. Each recommendation names its rule and evidence; savings are estimates at $3/credit ($194K at $2, $412K at $4).
+| Document | What it covers |
+|---|---|
+| [`docs/WRITEUP.md`](docs/WRITEUP.md) | The full story: how I worked through the data, each task, going beyond the brief, and what I found |
+| [`docs/API_SPEC.md`](docs/API_SPEC.md) | Every endpoint, permissions per role, error codes, WebSocket messages, reconnect behaviour |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How the parts fit together, design decisions and trade-offs, production path |
+| [`docs/DATA_QUALITY.md`](docs/DATA_QUALITY.md) | Every data rule and result, reconciliation, alert noise analysis, fix-it validation, the owner backtest |
 
-- **14 of 100 reports are orphaned** (no owner in the latest snapshot) and account for **14.4% of all spend** (about $587K at an assumed $3 per Snowflake credit).
-- **The brief's 15-second rule is breached by 82% of rows** (1,636 of 2,000). Sending one alert per breaching row would bury real problems. The engine notifies every breach of the brief's rule but only when it **starts** (warning over 15 s, escalating to critical over 30 s): 1,109 alerts, **32% fewer**, with nothing missed.
-- **Most expensive report per view: RPT_223 at $4.99.** The Node API and the SQL suite compute this independently and agree.
-- **4 snapshots had zero views but still cost money** (e.g. RPT_230: ~$2,575 of Snowflake compute). The SQL and the Node cleaning independently flag the same 103 cost-without-usage rows.
-- **Missing owners hid as the text `nan`** in 128 rows. A naive check found 117 orphan rows instead of 245.
-- **A feature that did not ship:** suggesting owners for orphaned reports from their history was backtested on the 86 reports with a known owner. It was right 3% of the time, worse than a random guess (7%), so it was not built. See `scripts/backtest-owner.js`.
+---
 
-## Assumptions (stated, not hidden)
+## 3. Tech stack
 
-| Assumption | Why | Where to change it |
+| Layer | Choice | Why |
 |---|---|---|
-| Roles: admin (platform team), owner (report author), viewer (report consumer), with least-privilege permissions (see `docs/API_SPEC.md`) | The brief requires RBAC but does not define roles or permissions; these mirror who uses an internal reporting portal | `server/auth.js`, `server/server.js` |
-| Every 100 CSV rows are one snapshot in time (20 snapshots) | The CSV has no timestamp; rows repeat RPT_200–299 twenty times in order | `clean.js`, `sql/02_load.sql` |
-| Ownership registry starts from the owner in the latest snapshot; admins can change it | Owners change between snapshots (RPT_203 has 10); ownership is a governance record, not telemetry | `server/server.js`, `sql/04_cost_attribution.sql` |
-| $3.00 per Snowflake credit | Real price depends on Everpure's contract | `server/server.js`, `REPORTING.COST_CONFIG` |
-| 10% warehouse idle time in the simulated metering log | Only used to demonstrate idle-time allocation | `REPORTING.COST_CONFIG` |
-| Snapshots are replayed every 3 s as live telemetry (the health view follows the replay) | No live telemetry exists; replay simulates it | `REPLAY_MS` env variable |
-| Ownership changes are saved to `data/state/ownership.json` | Survives restarts without needing a database; production would use a database table | `server/server.js`, `npm run reset-state` |
+| Frontend | React 19 + Vite | Required by the brief; Vite gives fast reloads and a simple build |
+| Backend | Node.js 20 + Express 5 | Required by the brief; small, readable REST API |
+| Real-time | `ws` (WebSocket) | The brief allowed SSE or WebSocket; WebSocket leaves room for two-way actions like acknowledging alerts |
+| Auth | JSON Web Tokens + salted scrypt password hashes | Stateless sessions; no plain-text passwords |
+| Data cleaning | Node.js + `csv-parse` | Same language as the server, so the API serves exactly what was validated |
+| SQL | Snowflake SQL, tested in DuckDB | Snowflake is the target; DuckDB runs the same MERGE, QUALIFY and window functions locally |
+| Fonts and styling | Inter + Space Mono (bundled), plain CSS | Colours taken from Everpure's own site; no runtime calls to third parties |
+| CI | GitHub Actions | Runs every check and builds the dashboard on each push |
 
-The dataset file name differs from the brief (`Case_Study_3_Pure_Insights_Monitoring.csv` in the brief; `Case_Study_3_Technical_Data_AI_Validation_Intern_-_Monetization.csv` received). The received file is used, saved as `data/raw/reports.csv`.
+---
 
-## Security and known limitations
+## 4. How I tested it
 
-| Area | What the project does | Production version |
-|---|---|---|
-| Passwords | Demo users stored as salted scrypt hashes; constant-time comparison | Corporate single sign-on (OIDC/SAML) |
-| Signing secret | Read from `JWT_SECRET`; the server **refuses to start** in production without it | Secrets manager |
-| Password guessing | 10 failed logins per minute per address and username, then `429` | Plus account lockout and alerting |
-| Sessions | 8-hour token, kept in `sessionStorage` (survives a refresh, cleared when the tab closes); expired or invalid sessions return to the login page | httpOnly secure cookie via SSO |
-| HTTP hardening | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cache-Control: no-store`; framework header hidden; 10 KB body limit | Plus TLS and a Content-Security-Policy at the load balancer |
-| Ownership changes | Persisted to a JSON file (write-then-rename) with an audit trail; tests use a separate file | Database with a permanent audit log |
-| Data | A fixed CSV replayed as a live feed, so values repeat every 60 s. Kept deliberately: inventing extra data would hide what the real data shows | Real event stream from the portal |
-| Fix-it actions | Standard playbooks per problem type; root causes need refresh error logs the data does not include | Link each finding to its error logs |
-| SQL tests | Need `pip3 install duckdb`; skipped with a message locally if missing, required in CI | Run against a real Snowflake account |
-
-## Project structure
-
-```
-clean.js                 validation + cleaning → data/clean/reports_clean.json, data/cleaning_log.csv
-server/
-  server.js              Express REST API, live state (snapshot clock + ownership registry), WebSocket on the same port
-  auth.js                JWT login, authenticate (401), requireRole (403)
-  ws.js                  WebSocket server: token check, role-filtered broadcast, heartbeat
-  alerts/engine.js       alert rules, severity, alert-on-change
-  alerts/replay.js       replays the 20 snapshots as live telemetry
-  fixit.js               fix-it queue: rules, evidence, actions, savings estimates
-client/                  React (Vite) dashboard, Everpure palette; src/useLive.js = WebSocket + auto-refresh
-sql/                     Snowflake SQL suite (01_ddl → 05_checks)
-scripts/
-  test-all.js            `npm test`: runs everything
-  run_sql.py             runs the SQL suite locally in DuckDB
-  alert-noise.js         measures alert volume per policy
-  validate-fixit.js      fix-it queue invariants + threshold sensitivity
-  backtest-owner.js      owner-suggestion backtest (negative result)
-  reset-state.js         `npm run reset-state`: clear saved ownership changes
-test-rbac.js, test-alerts.js   automated API and WebSocket tests
-validate.js, first.js, load.js, watch-alert.js   learning scripts from the first build steps
-docs/                    API spec, architecture, data quality
-```
-
-## Testing
-
-`npm test` runs 5 suites, 61 checks plus the cleaning reconciliation; all must pass:
+`npm test` runs everything and stops with an error if anything fails. GitHub Actions runs it on every push.
 
 | Suite | Checks | What it proves |
 |---|---|---|
-| Cleaning | totals reconcile | raw credits − quarantined = clean credits, exactly |
-| Fix-it queue | 6 | every item has evidence, no double counting, savings never exceed spend, no invented dollar figures, counts reproducible by hand (plus a sensitivity printout) |
-| API + RBAC + security | 31 | security headers, forged tokens rejected, login rate limit (429), 401 without a token, 403 for the wrong role, viewers never receive emails or costs, owners see only their reports, only admins reassign owners (validated, audited, reflected in health), fix-it queue scoped by role |
-| Real-time alerts | 14 | the system is live (snapshot events arrive, health view moves), viewers and fake tokens refused, owners get only their alerts, every >15 s breach notified, >30 s critical, no repeat alerts during an ongoing breach, catch-up after reconnect |
-| SQL | 10 | all rows loaded, no duplicates after a re-run, quarantine reconciles, allocated = metered credits, SQL matches the API and the cleaning script |
+| Data cleaning | reconciliation | Nothing was lost or invented while cleaning |
+| Fix-it queue | 6 + sensitivity | Every item has evidence; no double counting; spend at stake never exceeds spend; counts reproducible by hand |
+| API, RBAC and security | 31 | 401 and 403 in the right places; viewers never get emails or costs; owners see only their reports; only admins reassign owners; security headers; forged tokens rejected; login rate limiting |
+| Real-time alerts | 14 | The system is live; viewers and fake tokens are refused; owners get only their alerts; 15 s and 30 s thresholds correct; no repeat alerts during an ongoing problem; missed alerts can be fetched |
+| SQL | 10 | Every row loaded; no duplicates after a re-run; quarantine reconciles; allocated credits equal the bill; SQL agrees with the API and with the cleaning script |
 
-## What I would do next
+I also clicked through the dashboard as each role in a real browser, including what happens when the server restarts or a session expires.
 
-- Real telemetry: portal emits load-time and refresh events to a queue instead of replaying a CSV.
-- Single sign-on (OIDC/SAML) instead of demo logins; ownership and audit log stored in a database.
-- Query tags on every portal query so Snowflake attributes cost to reports exactly.
-- Route critical alerts to Slack or email so they reach people with the dashboard closed.
-- An alert lifecycle (acknowledge, resolve, time to acknowledge) and an alert-quality page (alerts per day, false-alarm rate).
-- Agree fix-it thresholds with the platform team: moving "chronic failure" from 8 to 7 failures in 20 flags 37 reports instead of 14.
-- Once real history exists, anomaly detection for load times and refresh failures, validated against the current rules as a baseline.
+---
+
+## 5. Project structure
+
+```
+clean.js                 data validation and cleaning → data/clean/, data/cleaning_log.csv
+server/
+  server.js              REST API, live state (snapshot clock + ownership register), WebSocket
+  auth.js                login, password hashing, 401/403 middleware
+  ws.js                  WebSocket: token check, role-filtered alerts, heartbeat
+  fixit.js               fix-it queue rules, evidence, actions, spend at stake
+  alerts/engine.js       alert rules and "alert when a problem starts"
+  alerts/replay.js       replays the 20 snapshots as live telemetry
+client/src/              React dashboard (App, pages/, useLive.js for the WebSocket)
+sql/                     Snowflake SQL suite, 01_ddl.sql to 05_checks.sql
+scripts/                 test-all.js, run_sql.py, validate-fixit.js, backtest-owner.js,
+                         alert-noise.js, reset-state.js
+test-rbac.js, test-alerts.js   API and WebSocket tests
+docs/                    write-up, API spec, architecture, data quality, screenshots
+first.js, load.js, validate.js, watch-alert.js   my first learning scripts, kept for reference
+```
+
+---
+
+## 6. What I would do next
+
+- **Real telemetry.** Have the portal send load times and refresh results to a queue, instead of replaying a CSV.
+- **Single sign-on** instead of demo logins, with ownership and its audit log in a database.
+- **Query tags** on every portal query, so Snowflake attributes cost to reports exactly.
+- **An alert lifecycle**: acknowledge, resolve, time to acknowledge, and routing critical alerts to Slack or email.
+- **Cost-overrun alerts** once each report has an agreed budget (for example at 80% and 100% of budget).
+- **Root causes for the fix-it queue** by linking each finding to its refresh error logs.
+- **Anomaly detection** once there is real history, validated against the current rules as a baseline.
+- **Usability**: search and sorting on tables, alert filters, trend charts, a people picker for owners.
+
+---
+
+## 7. Assumptions and limitations
+
+### Assumptions
+
+| Assumption | Why | Where to change it |
+|---|---|---|
+| Every 100 CSV rows are one snapshot in time (20 snapshots) | The CSV has no timestamps; the rows repeat RPT_200 to RPT_299 twenty times in order | `clean.js`, `sql/02_load.sql` |
+| Roles are admin (platform team), owner (report author) and viewer (report consumer), with least-privilege permissions | The brief requires RBAC but does not define roles | `server/auth.js`, `server/server.js` |
+| The ownership register starts from the owner in the latest snapshot; only admins change it | Owners change between snapshots in the data; responsibility should change only by a deliberate, audited action | `server/server.js` |
+| "Active users" in defect 4 means monthly active views | The brief does not define it; peak users is shown alongside | `clean.js`, `sql/04_cost_attribution.sql` |
+| $3.00 per Snowflake credit | The real price depends on Everpure's contract | `server/server.js`, `REPORTING.COST_CONFIG` |
+| 10% warehouse idle time in the simulated billing log | Only used to demonstrate idle-time allocation | `REPORTING.COST_CONFIG` |
+| A new snapshot every 3 seconds | Simulates a live feed | `REPLAY_MS` environment variable |
+| Fix-it thresholds: 8 of 20 failed refreshes, 17 of 20 slow loads | Clearly worse than typical (most reports fail 6 of 20); sensitivity shown in `docs/DATA_QUALITY.md` | `server/fixit.js` |
+
+The dataset I received is named differently from the brief (`Case_Study_3_Technical_Data_AI_Validation_Intern_-_Monetization.csv` instead of `Case_Study_3_Pure_Insights_Monitoring.csv`). I used the received file, saved as `data/raw/reports.csv`.
+
+### Limitations, and how I handled them
+
+| Limitation | What I did | In production |
+|---|---|---|
+| The data is a fixed CSV, so the live feed repeats every 60 seconds | Kept it. Generating extra data would mean inventing it | A real event stream |
+| No Snowflake account | SQL written in Snowflake syntax and tested in DuckDB | Run against Snowflake |
+| Demo logins | Passwords stored as salted hashes; the server refuses to start in production without a real `JWT_SECRET`; 10 failed logins a minute triggers a 429 | Single sign-on |
+| Sessions live in the browser tab (survive a refresh, cleared on close) | Expired or invalid sessions return to the login page | Secure cookies via SSO |
+| Ownership changes are saved to a JSON file | Survives restarts; `npm run reset-state` starts over | A database with a full audit log |
+| Fix-it actions are standard playbooks | Each finding shows its evidence | Link to refresh error logs for root causes |
+| Synthetic data | Findings are stated as findings on this dataset, and dollar figures as spend at stake, not guaranteed savings | Re-run on real data |
+
+---
 
 ## How this was built
 
