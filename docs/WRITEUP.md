@@ -1,11 +1,11 @@
 # Write-up: how I approached the case
 
-This is the longer story behind the [README](../README.md): how I worked through the data, why each part is built the way it is, and what I found. The numbers come from the scripts in this repo, and `npm test` reproduces them.
+this elaborates how I worked through the data, why each part is built the way it is, and what I found. The numbers come from the scripts in this repo, and `npm test` reproduces them.
 
 
 ## Starting with the data
 
-Before writing any app code I went through the CSV with code. It has 2,000 rows: 100 reports, each appearing 20 times, with no date column. All four defects from the brief were there, plus a few more:
+Analysing the csv provided : it has 2,000 rows - 100 reports, each appearing 20 times, with no date column. All four defects from the brief were there, plus a few more:
 
 - **Orphaned owners.** My first check found 117 rows. The real number is 245, because 128 "missing" owners were stored as the literal text `nan`, which is what pandas writes for an empty value. A JavaScript check for an empty string misses them all.
 - **Negative Snowflake credits** (24 rows). I quarantined them rather than setting them to zero, and proved the totals still add up: raw credits minus quarantined credits equals clean credits, to the cent.

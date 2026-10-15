@@ -82,7 +82,12 @@ npm run alert-noise    # alert volume under different alerting policies
 
 ---
 
-## 3. Tech stack
+## 3. Architecture and tech stack
+
+![Architecture: the CSV feeds two paths, clean.js into the Express API and React dashboard, and the Snowflake SQL suite into cost attribution, with both cross-checked](docs/architecture.svg)
+
+The CSV feeds two independent paths. `clean.js` validates it for the Express backend, which enforces access on every request, replays the snapshots as live telemetry and pushes alerts to the React dashboard over WebSocket. The Snowflake SQL suite loads the same CSV and attributes cost on its own, and both paths give the same answer. More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 
 | Layer | Choice | Why |
 |---|---|---|

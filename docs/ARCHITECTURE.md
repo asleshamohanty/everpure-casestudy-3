@@ -1,5 +1,9 @@
 # Architecture
 
+![Architecture diagram](architecture.svg)
+
+In more detail:
+
 ```
  raw CSV ──► clean.js (8 rules, cleaning log) ──► reports_clean.json
                                                         │
